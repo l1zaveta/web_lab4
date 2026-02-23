@@ -556,3 +556,31 @@ body {
   border-radius: var(--border-radius-sm);
   margin: var(--spacing-sm) 0;
 }
+
+@media (max-width: 600px) {
+  body {
+    padding: 10px;
+  }
+  
+  .weather-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .temp-large {
+    font-size: 3rem;
+  }
+  
+  .forecast-short {
+    grid-template-columns: 1fr;
+  }
+  
+  .extra-city-header {
+    flex-direction: column;
+  }
+  
+  .extra-add-btn {
+    width: 100%;
+    border-radius: 30px;
+  }
+}
