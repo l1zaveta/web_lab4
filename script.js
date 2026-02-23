@@ -421,3 +421,183 @@ function removeExtraCity(city) {
   saveToStorage();
   showToast('Город удален');
 }
+
+function setupAutocomplete(input, suggestionsEl, onSelect) {
+  if (!input || !suggestionsEl) return;
+  
+  let timeout;
+  
+  input.addEventListener('input', (e) => {
+    clearTimeout(timeout);
+    const query = e.target.value.toLowerCase().trim();
+    
+    if (query.length < 2) {
+      suggestionsEl.classList.remove('active');
+      return;
+    }
+    
+    timeout = setTimeout(() => {
+      const matches = CITY_DATABASE.filter(city => 
+        city.toLowerCase().includes(query)
+      ).slice(0, 5);
+      
+      if (matches.length > 0) {
+        suggestionsEl.innerHTML = matches.map(city => 
+          `<div class="suggestion-item" data-city="${city}">${city}</div>`
+        ).join('');
+        suggestionsEl.classList.add('active');
+        
+        suggestionsEl.querySelectorAll('.suggestion-item').forEach(item => {
+          item.addEventListener('click', () => {
+            input.value = item.dataset.city;
+            suggestionsEl.classList.remove('active');
+            if (onSelect) onSelect(item.dataset.city);
+          });
+        });
+      } else {
+        suggestionsEl.classList.remove('active');
+      }
+    }, CONFIG.DEBOUNCE_DELAY);
+  });
+  
+  document.addEventListener('click', (e) => {
+    if (!input.contains(e.target) && !suggestionsEl.contains(e.target)) {
+      suggestionsEl.classList.remove('active');
+    }
+  });
+  
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      suggestionsEl.classList.remove('active');
+    }
+  });
+}
+
+
+async function refreshAll() {
+  showToast('Обновление данных...');
+  
+  if (AppState.mainCity === 'current' && AppState.mainCoords) {
+    await loadMainByCoords(AppState.mainCoords.lat, AppState.mainCoords.lon);
+  } else if (AppState.mainCity) {
+    await loadMainCity(AppState.mainCity);
+  }
+  
+  
+  if (AppState.extraCities.length > 0) {
+    DOM.extra1Weather.innerHTML = '';
+    DOM.extra2Weather.innerHTML = '';
+    
+    for (let i = 0; i < AppState.extraCities.length; i++) {
+      try {
+        const weather = await getWeatherByCity(AppState.extraCities[i]);
+        const container = i === 0 ? DOM.extra1Weather : DOM.extra2Weather;
+        renderExtraWeather(container, weather, `${weather.cityName}, ${weather.country}`);
+      } catch (e) {
+        console.warn('Failed to refresh extra city');
+      }
+    }
+  }
+  
+  showToast('Данные обновлены');
+}
+
+
+function requestGeolocation() {
+  if (!navigator.geolocation) {
+    AppState.geoDenied = true;
+    DOM.mainName.textContent = 'Введите город';
+    showToast('Геолокация не поддерживается браузером', 'error');
+    return;
+  }
+  
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      await loadMainByCoords(position.coords.latitude, position.coords.longitude);
+      AppState.geoDenied = false;
+      saveToStorage();
+    },
+    (error) => {
+      AppState.geoDenied = true;
+      saveToStorage();
+      DOM.mainName.textContent = 'Введите город';
+      showToast('Доступ к геолокации отклонён. Введите город вручную.', 'info');
+    },
+    {
+      timeout: 10000,
+      maximumAge: 0
+    }
+  );
+}
+
+
+async function init() {
+  loadFromStorage();
+  
+  setupAutocomplete(DOM.mainSearch, DOM.mainSuggestions, (city) => {
+    clearInputError(DOM.mainSearch, DOM.mainError);
+    loadMainCity(city);
+  });
+  
+  setupAutocomplete(DOM.extra1Input, DOM.extra1Suggestions, (city) => {
+    clearInputError(DOM.extra1Input, DOM.extra1Error);
+    addExtraCity(city, 1);
+  });
+  
+  setupAutocomplete(DOM.extra2Input, DOM.extra2Suggestions, (city) => {
+    clearInputError(DOM.extra2Input, DOM.extra2Error);
+    addExtraCity(city, 2);
+  });
+  
+  DOM.mainSearchBtn.addEventListener('click', () => {
+    if (DOM.mainSearch.value.trim()) {
+      clearInputError(DOM.mainSearch, DOM.mainError);
+      loadMainCity(DOM.mainSearch.value.trim());
+    }
+  });
+  
+  DOM.extra1Add.addEventListener('click', () => {
+    if (DOM.extra1Input.value.trim()) {
+      addExtraCity(DOM.extra1Input.value.trim(), 1);
+    }
+  });
+  
+  DOM.extra2Add.addEventListener('click', () => {
+    if (DOM.extra2Input.value.trim()) {
+      addExtraCity(DOM.extra2Input.value.trim(), 2);
+    }
+  });
+  
+  DOM.refreshBtn.addEventListener('click', refreshAll);
+  
+  DOM.mainSearch.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && DOM.mainSearch.value.trim()) {
+      clearInputError(DOM.mainSearch, DOM.mainError);
+      loadMainCity(DOM.mainSearch.value.trim());
+    }
+  });
+  
+  updateExtraCounter();
+  
+  if (!AppState.mainCity && !AppState.geoDenied) {
+    requestGeolocation();
+  } else if (AppState.mainCity === 'current' && AppState.mainCoords) {
+    await loadMainByCoords(AppState.mainCoords.lat, AppState.mainCoords.lon);
+  } else if (AppState.mainCity) {
+    await loadMainCity(AppState.mainCity);
+  }
+  
+  if (AppState.extraCities.length > 0) {
+    for (let i = 0; i < AppState.extraCities.length; i++) {
+      try {
+        const weather = await getWeatherByCity(AppState.extraCities[i]);
+        const container = i === 0 ? DOM.extra1Weather : DOM.extra2Weather;
+        renderExtraWeather(container, weather, `${weather.cityName}, ${weather.country}`);
+      } catch (e) {
+        console.warn('Failed to restore extra city');
+      }
+    }
+  }
+}
+
+document.addEventListener('DOMContentLoaded', init);
