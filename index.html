@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meteo Forecast</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="weather-dashboard">
+   
+    <div class="dashboard-header">
+      <h1 class="dashboard-title">Meteo<span>Forecast</span></h1>
+      
+    </div>
+
+    
+    <div class="dashboard-grid">
+      
+      <div class="main-city card">
+        <div class="card-header">
+          <h2 class="city-name" id="mainCityName">Определение...</h2>
+          <span class="badge" id="mainCityBadge">основной</span>
+        </div>
+        
+      
+        <div class="search-section">
+          <div class="search-wrapper">
+            <input 
+              type="text" 
+              class="search-input" 
+              id="mainCitySearch" 
+              placeholder="Поиск города..."
+              autocomplete="off"
+            >
+            <button class="search-btn" id="mainCitySearchBtn">Найти</button>
+          </div>
+          <div class="suggestions-wrapper">
+            <div class="suggestions-list" id="mainSuggestions"></div>
+          </div>
+          <div class="input-error" id="mainCityError"></div>
+        </div>
+
+        
+        <div class="weather-now" id="mainWeatherNow">
+          <div class="loading">Загрузка данных...</div>
+        </div>
+
+       
+        <div class="forecast-short" id="mainForecast"></div>
+      </div>
+
+      
+      <div class="extra-cities">
+        <div class="extra-header">
+          <h3>Дополнительные города</h3>
+          <span class="extra-counter" id="extraCounter">0/2</span>
+        </div>
+
+        
+        <div class="extra-city-card card" id="extraCity1Container">
+          <div class="extra-city-header">
+            <input 
+              type="text" 
+              class="extra-city-input" 
+              id="extraCity1Input" 
+              placeholder="Введите город..."
+              autocomplete="off"
+            >
+            <button class="extra-add-btn" id="extraCity1Add">+</button>
+          </div>
+          <div class="suggestions-wrapper">
+            <div class="suggestions-list" id="extra1Suggestions"></div>
+          </div>
+          <div class="input-error" id="extraCity1Error"></div>
+          <div class="extra-weather" id="extraCity1Weather"></div>
+        </div>
+
+        
+        <div class="extra-city-card card" id="extraCity2Container">
+          <div class="extra-city-header">
+            <input 
+              type="text" 
+              class="extra-city-input" 
+              id="extraCity2Input" 
+              placeholder="Введите город..."
+              autocomplete="off"
+            >
+            <button class="extra-add-btn" id="extraCity2Add">+</button>
+          </div>
+          <div class="suggestions-wrapper">
+            <div class="suggestions-list" id="extra2Suggestions"></div>
+          </div>
+          <div class="input-error" id="extraCity2Error"></div>
+          <div class="extra-weather" id="extraCity2Weather"></div>
+        </div>
+      </div>
+    </div>
+
+    
+    <div class="dashboard-footer">
+      <button class="refresh-btn" id="refreshAllBtn">
+        <span class="refresh-icon">↻</span>
+        Обновить все данные
+      </button>
+    </div>
+
+    
+    <div class="toast-container" id="toastContainer"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
