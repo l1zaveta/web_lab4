@@ -59,3 +59,69 @@ const DOM = {
   refreshBtn: document.getElementById('refreshAllBtn'),
   toastContainer: document.getElementById('toastContainer')
 };
+
+function showToast(message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  DOM.toastContainer.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.remove();
+  }, 3000);
+}
+
+function setLoading(element, isLoading) {
+  if (!element) return;
+  if (isLoading) {
+    element.innerHTML = '<div class="loading">Загрузка данных</div>';
+  }
+}
+
+function updateExtraCounter() {
+  if (DOM.extraCounter) {
+    DOM.extraCounter.textContent = `${AppState.extraCities.length}/${CONFIG.MAX_EXTRA_CITIES}`;
+  }
+}
+
+function clearInputError(input, errorElement) {
+  if (input) input.classList.remove('error');
+  if (errorElement) {
+    errorElement.textContent = '';
+    errorElement.classList.remove('visible');
+  }
+}
+
+function showInputError(input, errorElement, message) {
+  if (input) input.classList.add('error');
+  if (errorElement) {
+    errorElement.textContent = message;
+    errorElement.classList.add('visible');
+  }
+}
+
+
+function saveToStorage() {
+  const data = {
+    mainCity: AppState.mainCity,
+    mainCoords: AppState.mainCoords,
+    extraCities: AppState.extraCities,
+    geoDenied: AppState.geoDenied
+  };
+  localStorage.setItem('meteoApp', JSON.stringify(data));
+}
+
+function loadFromStorage() {
+  const saved = localStorage.getItem('meteoApp');
+  if (saved) {
+    try {
+      const data = JSON.parse(saved);
+      AppState.mainCity = data.mainCity || null;
+      AppState.mainCoords = data.mainCoords || null;
+      AppState.extraCities = data.extraCities || [];
+      AppState.geoDenied = data.geoDenied || false;
+    } catch (e) {
+      console.warn('Failed to load storage');
+    }
+  }
+}
