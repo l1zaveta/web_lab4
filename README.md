@@ -25,3 +25,5 @@
 - Хранение: localStorage
 
 ## Деплой проекта: https://l1zaveta.github.io/web_lab4/
+
+## ссылка на презентацию (доклад): https://drive.google.com/drive/folders/1PuhyWdaM8GAKcKruzIpmei6tX4VX2g_Q
