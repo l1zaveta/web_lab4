@@ -197,6 +197,7 @@ async function getForecast(lat, lon) {
 }
 
 
+
 function renderMainWeather(data) {
   if (!DOM.mainWeather) return;
   
@@ -257,17 +258,23 @@ function formatDay(timestamp) {
   return date.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric' });
 }
 
-function renderExtraWeather(container, data, cityName) {
+
+function renderExtraWeather(container, data, cityName, cityOriginalName) {
   if (!container) return;
+  
+
+  
+  const displayName = cityName; 
+  const cityForDelete = cityOriginalName || displayName.split(',')[0].trim();
   
   const html = `
     <div class="extra-weather-content">
-      <div class="extra-city-title">${cityName}</div>
+      <div class="extra-city-title">${displayName}</div>
       <div class="extra-temp-row">
         <span class="extra-temp">${data.temp}°C</span>
         <span class="extra-desc">${data.description}</span>
       </div>
-      <button class="remove-city-btn" data-city="${cityName.split(',')[0]}">Удалить</button>
+      <button class="remove-city-btn" data-city="${cityForDelete}">Удалить</button>
     </div>
   `;
   
@@ -278,7 +285,9 @@ function renderExtraWeather(container, data, cityName) {
   if (removeBtn) {
     removeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
+      e.preventDefault();
       const cityToRemove = removeBtn.dataset.city;
+      console.log('Удаляем город:', cityToRemove);
       removeExtraCity(cityToRemove);
     });
   }
@@ -308,6 +317,7 @@ async function loadMainCity(city) {
     saveToStorage();
     showToast('Данные загружены');
   } catch (error) {
+    console.error(error);
     DOM.mainWeather.innerHTML = '<div class="error-message">Ошибка загрузки города</div>';
     showInputError(DOM.mainSearch, DOM.mainError, 'Город не найден или ошибка сети');
   } finally {
@@ -335,12 +345,14 @@ async function loadMainByCoords(lat, lon) {
     AppState.weatherCache.set('main', weather);
     saveToStorage();
   } catch (error) {
+    console.error(error);
     DOM.mainWeather.innerHTML = '<div class="error-message">Ошибка геолокации</div>';
   } finally {
     setLoading(DOM.mainWeather, false);
     setLoading(DOM.mainForecast, false);
   }
 }
+
 
 async function addExtraCity(city, slot) {
   const input = slot === 1 ? DOM.extra1Input : DOM.extra2Input;
@@ -352,13 +364,21 @@ async function addExtraCity(city, slot) {
     return false;
   }
   
-  const cityLower = city.toLowerCase();
-  const isDuplicate = AppState.extraCities.some(c => c.toLowerCase() === cityLower) ||
-                      (AppState.mainCity && AppState.mainCity.toLowerCase() === cityLower);
+  const cityLower = city.toLowerCase().trim();
+  
+  
+  if (AppState.mainCity && AppState.mainCity.toLowerCase() === cityLower) {
+    showInputError(input, errorEl, 'Этот город уже добавлен как основной');
+    return false;
+  }
+  
+  
+  const isDuplicate = AppState.extraCities.some(c => c.toLowerCase() === cityLower);
   if (isDuplicate) {
     showInputError(input, errorEl, 'Этот город уже добавлен');
     return false;
   }
+  
   
   const cityExists = CITY_DATABASE.some(c => c.toLowerCase() === cityLower);
   if (!cityExists) {
@@ -370,11 +390,23 @@ async function addExtraCity(city, slot) {
   
   try {
     const weather = await getWeatherByCity(city);
+    
+    
     const correctCity = CITY_DATABASE.find(c => c.toLowerCase() === cityLower);
+    
+    
     AppState.extraCities.push(correctCity);
     
+    
     const container = slot === 1 ? DOM.extra1Weather : DOM.extra2Weather;
-    renderExtraWeather(container, weather, `${weather.cityName}, ${weather.country}`);
+    
+    
+    renderExtraWeather(
+      container, 
+      weather, 
+      `${weather.cityName}, ${weather.country}`,
+      correctCity 
+    );
     
     AppState.weatherCache.set(`extra${slot}`, weather);
     updateExtraCounter();
@@ -384,6 +416,7 @@ async function addExtraCity(city, slot) {
     showToast('Город добавлен');
     return true;
   } catch (error) {
+    console.error(error);
     showInputError(input, errorEl, 'Ошибка загрузки города');
     return false;
   } finally {
@@ -391,36 +424,60 @@ async function addExtraCity(city, slot) {
   }
 }
 
+
 function removeExtraCity(city) {
-  AppState.extraCities = AppState.extraCities.filter(c => c !== city);
+  console.log('removeExtraCity вызван с city:', city);
+  console.log('Текущие extraCities:', AppState.extraCities);
   
-о
+  
+  AppState.extraCities = AppState.extraCities.filter(c => 
+    c.toLowerCase() !== city.toLowerCase()
+  );
+  
+  console.log('После фильтрации:', AppState.extraCities);
+  
+  
   DOM.extra1Weather.innerHTML = '';
   DOM.extra2Weather.innerHTML = '';
   
   
-  if (AppState.extraCities.length > 0) {
-    AppState.extraCities.forEach(async (city, index) => {
-      try {
-        const weather = await getWeatherByCity(city);
-        const container = index === 0 ? DOM.extra1Weather : DOM.extra2Weather;
-        renderExtraWeather(container, weather, `${weather.cityName}, ${weather.country}`);
-      } catch (e) {
-        console.warn('Failed to reload extra city');
-      }
-    });
-  }
-  
   clearInputError(DOM.extra1Input, DOM.extra1Error);
   clearInputError(DOM.extra2Input, DOM.extra2Error);
   
+  
   AppState.weatherCache.delete('extra1');
   AppState.weatherCache.delete('extra2');
+  
+  
+  if (AppState.extraCities.length > 0) {
+    
+    const loadRemainingCities = async () => {
+      for (let i = 0; i < AppState.extraCities.length; i++) {
+        try {
+          const cityName = AppState.extraCities[i];
+          const weather = await getWeatherByCity(cityName);
+          const container = i === 0 ? DOM.extra1Weather : DOM.extra2Weather;
+          
+          renderExtraWeather(
+            container, 
+            weather, 
+            `${weather.cityName}, ${weather.country}`,
+            cityName 
+          );
+        } catch (e) {
+          console.warn('Failed to reload extra city:', e);
+        }
+      }
+    };
+    
+    loadRemainingCities();
+  }
   
   updateExtraCounter();
   saveToStorage();
   showToast('Город удален');
 }
+
 
 function setupAutocomplete(input, suggestionsEl, onSelect) {
   if (!input || !suggestionsEl) return;
@@ -448,7 +505,8 @@ function setupAutocomplete(input, suggestionsEl, onSelect) {
         suggestionsEl.classList.add('active');
         
         suggestionsEl.querySelectorAll('.suggestion-item').forEach(item => {
-          item.addEventListener('click', () => {
+          item.addEventListener('click', (e) => {
+            e.stopPropagation();
             input.value = item.dataset.city;
             suggestionsEl.classList.remove('active');
             if (onSelect) onSelect(item.dataset.city);
@@ -490,9 +548,15 @@ async function refreshAll() {
     
     for (let i = 0; i < AppState.extraCities.length; i++) {
       try {
-        const weather = await getWeatherByCity(AppState.extraCities[i]);
+        const cityName = AppState.extraCities[i];
+        const weather = await getWeatherByCity(cityName);
         const container = i === 0 ? DOM.extra1Weather : DOM.extra2Weather;
-        renderExtraWeather(container, weather, `${weather.cityName}, ${weather.country}`);
+        renderExtraWeather(
+          container, 
+          weather, 
+          `${weather.cityName}, ${weather.country}`,
+          cityName
+        );
       } catch (e) {
         console.warn('Failed to refresh extra city');
       }
@@ -518,6 +582,7 @@ function requestGeolocation() {
       saveToStorage();
     },
     (error) => {
+      console.warn('Geolocation error:', error);
       AppState.geoDenied = true;
       saveToStorage();
       DOM.mainName.textContent = 'Введите город';
@@ -587,12 +652,19 @@ async function init() {
     await loadMainCity(AppState.mainCity);
   }
   
+  
   if (AppState.extraCities.length > 0) {
     for (let i = 0; i < AppState.extraCities.length; i++) {
       try {
-        const weather = await getWeatherByCity(AppState.extraCities[i]);
+        const cityName = AppState.extraCities[i];
+        const weather = await getWeatherByCity(cityName);
         const container = i === 0 ? DOM.extra1Weather : DOM.extra2Weather;
-        renderExtraWeather(container, weather, `${weather.cityName}, ${weather.country}`);
+        renderExtraWeather(
+          container, 
+          weather, 
+          `${weather.cityName}, ${weather.country}`,
+          cityName
+        );
       } catch (e) {
         console.warn('Failed to restore extra city');
       }
